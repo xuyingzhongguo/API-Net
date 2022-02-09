@@ -9,16 +9,17 @@ import sys
 # python create_list.py -df true -f2f true -nt true --binary_label --name_train data_list/DF_F2F_NT_train_000599_binary_label.txt --name_val data_list/DF_F2F_NT_val_600799_binary_label.txt --name_test data_list/DF_F2F_NT_test_800999_binary_label.txt
 
 face_images_paths = {
-    # '': '/home/user1/xuyi/FaceF/dataset/manipulated_sequences/DeepFakeDetection/c23/face_images/',
-    'deepfakes': '/cluster/home/xuyi/xuyi/FF++/manipulated_sequences/Deepfakes/raw/face_images/',
-    'face2face': '/cluster/home/xuyi/xuyi/FF++/manipulated_sequences/Face2Face/raw/face_images/',
-    'faceswap': '/cluster/home/xuyi/xuyi/FF++/manipulated_sequences/FaceSwap/raw/face_images/',
-    'neuraltexures': '/cluster/home/xuyi/xuyi/FF++/manipulated_sequences/NeuralTextures/raw/face_images/',
-    'original': '/cluster/home/xuyi/xuyi/FF++/original_sequences/youtube/raw/face_images/'
+    # '': '/home/user1/xuyi/FaceForensics++/DeepFakeDetection/c23/face_images/',
+    'deepfakes': '/cluster/home/xuyi/xuyi/FaceForensics++/manipulated_sequences/Deepfakes/raw/face_images/',
+    'face2face': '/cluster/home/xuyi/xuyi/FaceForensics++/manipulated_sequences/Face2Face/raw/face_images/',
+    'faceswap': '/cluster/home/xuyi/xuyi/FaceForensics++/manipulated_sequences/FaceSwap/raw/face_images/',
+    'neuraltexures': '/cluster/home/xuyi/xuyi/FaceForensics++/manipulated_sequences/NeuralTextures/raw/face_images/',
+    'original': '/cluster/home/xuyi/xuyi/FaceForensics++/original_sequences/youtube/raw/face_images/',
+    'faceshifter': '/cluster/home/xuyi/xuyi/FaceForensics++/manipulated_sequences/FaceShifter/raw/face_images/',
 }
 
 
-def dataset_decide(deepfakes_inc, face2face_inc, faceswap_inc, neuraltextures_inc, original_inc):
+def dataset_decide(deepfakes_inc, face2face_inc, faceswap_inc, neuraltextures_inc, original_inc, faceshifter_inc):
     dataset_include = []
 
     if deepfakes_inc == 'true':
@@ -31,11 +32,13 @@ def dataset_decide(deepfakes_inc, face2face_inc, faceswap_inc, neuraltextures_in
         dataset_include.append(face_images_paths['neuraltexures'])
     if original_inc == 'true':
         dataset_include.append(face_images_paths['original'])
+    if faceshifter_inc == 'true':
+        dataset_include.append(face_images_paths['faceshifter'])
 
     return dataset_include
 
 
-def find_path(file_paths, train_list_name, val_list_name, binary_label):
+def find_path(file_paths, train_list_name, val_list_name, test_list_name, binary_label):
     file_name_lists = []
     for file_path in file_paths:
         file_path = Path(file_path)
@@ -76,6 +79,11 @@ def find_path(file_paths, train_list_name, val_list_name, binary_label):
             elif 599 < int(single_path.split('/')[-2]) < 800:
                 with open(val_list_name, 'a+') as ff:
                     ff.write(content)
+            elif int(single_path.split('/')[-2]) > 799:
+                with open(test_list_name, 'a+') as ff:
+                    ff.write(content)
+            else:
+                sys.exit('wrong path')
         else:
             if int(single_path.split('/')[-2][0:3]) < 600:
                 with open(train_list_name, 'a+') as ff:
@@ -83,16 +91,12 @@ def find_path(file_paths, train_list_name, val_list_name, binary_label):
             elif 599 < int(single_path.split('/')[-2][0:3]) < 800:
                 with open(val_list_name, 'a+') as ff:
                     ff.write(content)
+            elif int(single_path.split('/')[-2][0:3]) > 799:
+                with open(test_list_name, 'a+') as ff:
+                    ff.write(content)
+            else:
+                sys.exit('wrong path')
 
-        # if int(single_path.split('/')[-2]) < 600 or int(single_path.split('/')[-2][0:3]) < 600:
-        #     with open(train_list_name, 'a+') as ff:
-        #         ff.write(content)
-        # elif int(single_path.split('/')[-2]) > 799 or int(single_path.split('/')[-2][0:3]) > 799:
-        #     with open(test_list_name, 'a+') as ff:
-        #         ff.write(content)
-        # elif 599 < int(single_path.split('/')[-2]) < 800 or 599 < int(single_path.split('/')[-2][0:3]) < 800:
-        #     with open(val_list_name, 'a+') as ff:
-        #         ff.write(content)
 
 
 def main():
@@ -102,12 +106,15 @@ def main():
     faceswap_inc = args.faceswap
     neuraltextures_inc = args.neuraltextures
     original_inc = args.original
+    faceshifter_inc = args.faceshifter
     train_list_name = args.name_train
     val_list_name = args.name_val
+    test_list_name = args.name_test
     binary_label = args.binary_label
 
-    dataset_include = dataset_decide(deepfakes_inc, face2face_inc, faceswap_inc, neuraltextures_inc, original_inc)
-    find_path(dataset_include, train_list_name, val_list_name, binary_label)
+    dataset_include = dataset_decide(deepfakes_inc, face2face_inc, faceswap_inc, neuraltextures_inc, original_inc,
+                                     faceshifter_inc)
+    find_path(dataset_include, train_list_name, val_list_name, test_list_name, binary_label)
 
 
 if __name__ == "__main__":
@@ -118,6 +125,7 @@ if __name__ == "__main__":
     parse.add_argument('--faceswap', '-fs', type=str, default='false')
     parse.add_argument('--neuraltextures', '-nt', type=str, default='false')
     parse.add_argument('--original', '-o', type=str, default='true')
+    parse.add_argument('--faceshifter', '-fsh', type=str, default='false')
     parse.add_argument('--name_train', type=str, default='train.txt')
     parse.add_argument('--name_val', type=str, default='val.txt')
     parse.add_argument('--name_test', type=str, default='test.txt')

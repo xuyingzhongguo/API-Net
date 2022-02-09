@@ -1,25 +1,52 @@
 import torch
-from torch.utils.data import Dataset, default_collate
+from torch.utils.data import Dataset
 from torch.utils.data.sampler import BatchSampler
-from PIL import  Image
+from PIL import Image
 import numpy as np
+import cv2
+import sys
 
 
 def default_loader(path):
     try:
         img = Image.open(path).convert('RGB')
-        return img
     except:
         with open('read_error.txt', 'a') as fid:
             fid.write(path+'\n')
-        # return Image.new('RGB', (224,224), 'white')
-    # return img
+        return Image.new('RGB', (224, 224), 'white')
+    return img
+
+
+# b: CIELab, v: Hsv, cb: ycrcb
+def bvcb_loader(path):
+    try:
+        img = cv2.imread(path, cv2.COLOR_BGR2RGB)
+        lab_img = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
+        hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        ycrcb_img = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+        h, w = img[:, :, 0].shape
+        new_arr = np.zeros((h, w, 3))
+        new_arr[:, :, 0] = lab_img[:, :, 2]
+        new_arr[:, :, 1] = hsv_img[:, :, 2]
+        new_arr[:, :, 2] = ycrcb_img[:, :, 2]
+        new_arr = new_arr.astype('uint8')
+        img = Image.fromarray(new_arr)
+    except:
+        with open('read_error.txt', 'a') as fid:
+            fid.write(path+'\n')
+        return Image.new('RGB', (224, 224), 'white')
+    return img
 
 
 class RandomDataset(Dataset):
-    def __init__(self, val_list, transform=None, dataloader=default_loader):
+    def __init__(self, val_list, loader, transform=None):
         self.transform = transform
-        self.dataloader = dataloader
+        if loader == 'default_loader':
+            print('self.dataloader = default_loader')
+            self.dataloader = default_loader
+        elif loader == 'bvcb_loader':
+            print('self.dataloader = bvcb_loader')
+            self.dataloader = bvcb_loader
 
         with open(val_list, 'r') as fid:
             self.imglist = fid.readlines()
@@ -39,9 +66,14 @@ class RandomDataset(Dataset):
 
 
 class BatchDataset(Dataset):
-    def __init__(self, train_list, transform=None, dataloader=default_loader):
+    def __init__(self, train_list, loader, transform=None):
         self.transform = transform
-        self.dataloader = dataloader
+        if loader == 'default_loader':
+            self.dataloader = default_loader
+        elif loader == 'bvcb_loader':
+            self.dataloader = bvcb_loader
+        else:
+            sys.exit('wrong image loader baby')
 
         with open(train_list, 'r') as fid:
             self.imglist = fid.readlines()
@@ -57,13 +89,12 @@ class BatchDataset(Dataset):
         image_name, label = self.imglist[index].strip().split()
         image_path = image_name
         img = self.dataloader(image_path)
-        if img == None:
-            return 0
         img = self.transform(img)
         label = int(label)
         label = torch.LongTensor([label])
 
         return [img, label]
+
 
     def __len__(self):
         return len(self.imglist)
@@ -105,9 +136,14 @@ class BalancedBatchSampler(BatchSampler):
 
 
 class RandomDataset_test(Dataset):
-    def __init__(self, val_list, transform=None, dataloader=default_loader):
+    def __init__(self, val_list, loader, transform=None):
         self.transform = transform
-        self.dataloader = dataloader
+        if loader == 'default_loader':
+            self.dataloader = default_loader
+        elif loader == 'bvcb_loader':
+            self.dataloader = bvcb_loader
+        else:
+            sys.exit('wrong image loader baby')
 
         with open(val_list, 'r') as fid:
             self.imglist = fid.readlines()

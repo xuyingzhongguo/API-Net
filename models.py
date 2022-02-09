@@ -5,8 +5,7 @@ from torchvision import models
 import numpy as np
 import sys
 import torch.nn.functional as F
-import scipy.spatial as sp
-from utils import init_weights
+from utils import init_weights_zero, init_weights_xavier_uniform, init_weights_xavier_normal, init_weights_kaiming_uniform, init_weights_kaiming_normal
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -17,14 +16,15 @@ def pdist(vectors):
     return distance_matrix
 
 
-def cosdist(vectors):
-    vectors_t = torch.t(vectors)
-    distance_matrix = 1 - sp.distance.cdist(vectors, vectors_t, 'cosine')
-    return distance_matrix
+def pw_cosine_distance(vector):
+    normalized_vec = F.normalize(vector)
+    res = torch.mm(normalized_vec, normalized_vec.T)
+    cos_dist = 1 - res
+    return cos_dist
 
 
 class API_Net(nn.Module):
-    def __init__(self, num_classes=5, model_name='res101', weight_init_zero=False):
+    def __init__(self, num_classes=5, model_name='res101', weight_init='pretrained'):
         super(API_Net, self).__init__()
 
         # ---------Resnet101---------
@@ -52,9 +52,25 @@ class API_Net(nn.Module):
         else:
             sys.exit('wrong model name baby')
 
-        if weight_init_zero:
-            model.apply(init_weights)
+        if weight_init == 'zero':
+            model.apply(init_weights_zero)
             print('init weight 0')
+        elif weight_init == 'xavier_uniform':
+            print('init weight xavier uniform')
+            model.apply(init_weights_xavier_uniform)
+        elif weight_init == 'xavier_normal':
+            print('init weight xavier normal')
+            model.apply(init_weights_xavier_normal)
+        elif weight_init == 'kaiming_uniform':
+            print('init weight kaiming uniform')
+            model.apply(init_weights_kaiming_uniform)
+        elif weight_init == 'kaiming_normal':
+            print('init weight kaiming normal')
+            model.apply(init_weights_kaiming_normal)
+
+        else:
+            print('you are using pretrained model if you do not load the parameter')
+
 
         layers = list(model.children())[:-2]
         if 'res' in model_name:
@@ -79,9 +95,9 @@ class API_Net(nn.Module):
         # print(f'images {images.shape}')
         conv_out = self.conv(images)
         # print(f'conv_out {conv_out.shape}')
-        pool_out = self.avg(conv_out)
+        pool_out_old = self.avg(conv_out)
         # print(f'pool_out {pool_out.shape}')
-        pool_out = pool_out.squeeze()
+        pool_out = pool_out_old.squeeze()
         # print(f'pool_out {pool_out.shape}')
 
         if flag == 'train':
@@ -113,19 +129,25 @@ class API_Net(nn.Module):
             logit2_self = self.fc(self.drop(features2_self))
             logit2_other = self.fc(self.drop(features2_other))
 
-            return logit1_self, logit1_other, logit2_self, logit2_other, labels1, labels2
+            features = self.fc(pool_out)
+
+            return logit1_self, logit1_other, logit2_self, logit2_other, labels1, labels2, features
 
         elif flag == 'val':
             return self.fc(pool_out)
         elif flag == 'test':
             return self.fc(pool_out)
+        elif flag == 'tsne':
+            return pool_out
 
 
     def get_pairs(self, embeddings, labels, dist_type):
         if dist_type == 'euclidean':
             distance_matrix = pdist(embeddings).detach().cpu().numpy()
         elif dist_type == 'cosine':
-            distance_matrix = cosdist(embeddings).detach().cpu().numpy()
+            distance_matrix = pw_cosine_distance(embeddings).detach().cpu().numpy()
+        else:
+            sys.exit('wrong distance name baby')
 
         labels = labels.detach().cpu().numpy().reshape(-1,1)
         num = labels.shape[0]
@@ -142,7 +164,7 @@ class API_Net(nn.Module):
         inter_idxs = np.argmin(dist_diff, axis=1)
 
         intra_pairs = np.zeros([embeddings.shape[0], 2])
-        inter_pairs  = np.zeros([embeddings.shape[0], 2])
+        inter_pairs = np.zeros([embeddings.shape[0], 2])
         intra_labels = np.zeros([embeddings.shape[0], 2])
         inter_labels = np.zeros([embeddings.shape[0], 2])
         for i in range(embeddings.shape[0]):

@@ -12,6 +12,7 @@ from models import API_Net
 from datasets import RandomDataset, BatchDataset, BalancedBatchSampler
 from utils import accuracy, AverageMeter, save_checkpoint, my_collate
 import tensorboardX
+from orthogonalprojectionloss import OrthogonalProjectionLoss
 
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
@@ -31,14 +32,8 @@ parser.add_argument('--weight-decay', '--wd', default=5e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
 parser.add_argument('--print-freq', '-p', default=100, type=int,
                     metavar='N', help='print frequency (default: 10)')
-# parser.add_argument('--evaluate-freq', default=10, type=int,
-#                     help='the evaluation frequence')
 parser.add_argument('--resume', default='./checkpoint.pth.tar', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
-# parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
-#                     help='evaluate model on validation set')
-# parser.add_argument('--pretrained', dest='pretrained', action='store_true',
-#                     help='use pre-trained model')
 parser.add_argument('--n_classes', default=2, type=int,
                     help='the number of classes')
 parser.add_argument('--n_classes_total', default=5, type=int,
@@ -55,8 +50,8 @@ parser.add_argument('--model_output_path', default='model_save', type=str,
                     help='path to save models')
 parser.add_argument('--model_name', default='res101', type=str)
 parser.add_argument('--dist_type', default='euclidean', type=str)
-parser.add_argument('--weight_init_zero', action='store_true')
-parser.add_argument('--color_space', default='bgr', type=str)
+parser.add_argument('--weight_init', default='pretrained', type=str)
+parser.add_argument('--image_loader', default='default_loader', type=str)
 
 
 best_prec1 = 0
@@ -72,10 +67,15 @@ def main():
 
     n_classes_total = args.n_classes_total
     model_name = args.model_name
-    weight_init_zero = args.weight_init_zero
+    weight_init = args.weight_init
+    dist_type = args.dist_type
+    image_loader = args.image_loader
 
     # create model
-    model = API_Net(num_classes=n_classes_total, model_name=model_name, weight_init_zero=weight_init_zero)
+    model = API_Net(num_classes=n_classes_total,
+                    model_name=model_name,
+                    weight_init=weight_init,
+                    )
     model = model.to(device)
 
     model.conv = nn.DataParallel(model.conv)
@@ -108,6 +108,7 @@ def main():
     # Data loading code
     train_list = args.train_list
     train_dataset = BatchDataset(train_list=train_list,
+                                 loader=image_loader,
                                  transform=transforms.Compose([
                                      transforms.Resize([512,512]),
                                      transforms.RandomCrop([448,448]),
@@ -116,7 +117,8 @@ def main():
                                      transforms.Normalize(
                                          mean=(0.485, 0.456, 0.406),
                                          std=(0.229, 0.224, 0.225)
-                                     )]))
+                                     )]),
+                                 )
                                             
     train_sampler = BalancedBatchSampler(train_dataset, args.n_classes, args.n_samples)
     train_loader = torch.utils.data.DataLoader(
@@ -124,13 +126,13 @@ def main():
         batch_sampler=train_sampler,
         num_workers=args.workers,
         pin_memory=True,
-        collate_fn=my_collate
     )
     scheduler_conv = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_conv, 100*len(train_loader))
     scheduler_fc = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_fc, 100*len(train_loader))
 
     val_list = args.val_list
     val_dataset = RandomDataset(val_list=val_list,
+                                loader=image_loader,
                                 transform=transforms.Compose([
                                     transforms.Resize([512, 512]),
                                     transforms.CenterCrop([448, 448]),
@@ -138,10 +140,15 @@ def main():
                                     transforms.Normalize(
                                         mean=(0.485, 0.456, 0.406),
                                         std=(0.229, 0.224, 0.225)
-                                    )]))
+                                    )]),
+                                )
     val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True)
+        val_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.workers,
+        pin_memory=True,
+    )
 
     step = 0
 
@@ -153,8 +160,8 @@ def main():
     print('START TIME:', time.asctime(time.localtime(time.time())))
     for epoch in range(args.start_epoch, args.epochs):
         train(train_loader, model, criterion, optimizer_conv, scheduler_conv, optimizer_fc, scheduler_fc, epoch, step,
-              n_classes_total, train_writer)
-        prec1_val, loss_val = validate(val_loader, model, criterion)
+              n_classes_total, train_writer, dist_type)
+        prec1_val, loss_val = validate(val_loader, model, criterion, dist_type)
 
         train_writer.add_scalar('val_loss', loss_val, epoch)
         train_writer.add_scalar('val_top1', prec1_val, epoch)
@@ -174,7 +181,7 @@ def main():
 
 
 def train(train_loader, model, criterion, optimizer_conv, scheduler_conv, optimizer_fc, scheduler_fc, epoch, step,
-          n_classes_total, train_writer):
+          n_classes_total, train_writer, dist_type):
     global best_prec1
 
     batch_time = AverageMeter()
@@ -189,6 +196,8 @@ def train(train_loader, model, criterion, optimizer_conv, scheduler_conv, optimi
     # switch to train mode
     end = time.time()
     rank_criterion = nn.MarginRankingLoss(margin=0.05)
+    op_loss = OrthogonalProjectionLoss(gamma=0.5)
+    op_lambda = 0.4
     softmax_layer = nn.Softmax(dim=1).to(device)
 
     for i, (input, target) in enumerate(train_loader):
@@ -203,7 +212,7 @@ def train(train_loader, model, criterion, optimizer_conv, scheduler_conv, optimi
 
 
         # compute output
-        logit1_self, logit1_other, logit2_self, logit2_other, labels1, labels2 = model(input_var, target_var, flag='train')
+        logit1_self, logit1_other, logit2_self, logit2_other, labels1, labels2, features = model(input_var, target_var, flag='train', dist_type=dist_type)
         batch_size = logit1_self.shape[0]
         labels1 = labels1.to(device)
         labels2 = labels2.to(device)
@@ -223,6 +232,7 @@ def train(train_loader, model, criterion, optimizer_conv, scheduler_conv, optimi
         # print(f'train logits, targets: {logits}, {targets}')
         softmax_loss = criterion(logits, targets)
 
+        # margin rank loss
         self_scores = softmax_layer(self_logits)[torch.arange(2*batch_size).to(device).long(),
                                                          torch.cat([labels1, labels2], dim=0)]
         other_scores = softmax_layer(other_logits)[torch.arange(2*batch_size).to(device).long(),
@@ -230,7 +240,10 @@ def train(train_loader, model, criterion, optimizer_conv, scheduler_conv, optimi
         flag = torch.ones([2*batch_size, ]).to(device)
         rank_loss = rank_criterion(self_scores, other_scores, flag)
 
-        loss = softmax_loss + rank_loss
+        # orthogonal projection loss
+        loss_op = op_loss(features, target_var)
+
+        loss = softmax_loss + rank_loss + op_lambda * loss_op
 
         # measure accuracy and record loss
         prec1 = accuracy(logits, targets, 1)
@@ -278,7 +291,7 @@ def train(train_loader, model, criterion, optimizer_conv, scheduler_conv, optimi
     return top1.avg, softmax_losses.avg
 
 
-def validate(val_loader, model, criterion):
+def validate(val_loader, model, criterion, dist_type):
     batch_time = AverageMeter()
     softmax_losses = AverageMeter()
     top1 = AverageMeter()
@@ -295,7 +308,7 @@ def validate(val_loader, model, criterion):
             target_val = target.to(device).squeeze()
 
             # compute output
-            logits_val = model(input_val, targets=None, flag='val')
+            logits_val = model(input_val, targets=None, flag='val', dist_type=dist_type)
             # print(f'train logits, targets_val: {logits_val}, {target_val}')
 
             if target_val.dim() != 0:
