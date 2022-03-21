@@ -64,9 +64,22 @@ def accuracy_test(scores, targets):
 
     batch_size = targets.size(0)
     _, ind = torch.topk(scores, 1)
+
+    tn = tp = fn = fp = 0
+    if ind == 0 and targets.view(-1) == 0:
+        tn = tn + 1
+    elif ind != 0 and targets != 0:
+        tp = tp + 1
+    elif ind != 0 and targets.view(-1) == 0:
+        fp = fp + 1
+    elif ind == 0 and targets != 0:
+        fn = fn + 1
+    else:
+        sys.exit('wrong acc calculation')
+
     correct = ind.eq(targets.view(-1))
     correct_total = correct.view(-1).float().sum()  # 0D tensor
-    return correct_total.item() * (100.0 / batch_size)
+    return correct_total.item() * (100.0 / batch_size), tn, tp, fn, fp
 
 
 def accuracy_test_open_set(scores, targets):

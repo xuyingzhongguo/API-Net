@@ -8,11 +8,12 @@ import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
 import numpy as np
-from models import API_Net 
+from models import API_Net
 from datasets import RandomDataset, BatchDataset, BalancedBatchSampler
 from utils import accuracy, AverageMeter, save_checkpoint, my_collate
 import tensorboardX
 from orthogonalprojectionloss import OrthogonalProjectionLoss
+from pathlib import Path
 
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
@@ -47,11 +48,12 @@ parser.add_argument('--val_list', default='data_list/trycode.txt', type=str,
 parser.add_argument('--tensorboard_path', default='tensorboard_logs', type=str,
                     help='path to tensorboard')
 parser.add_argument('--model_output_path', default='model_save', type=str,
-                    help='path to save models')
+                    help='path to save model')
 parser.add_argument('--model_name', default='res101', type=str)
 parser.add_argument('--dist_type', default='euclidean', type=str)
 parser.add_argument('--weight_init', default='pretrained', type=str)
 parser.add_argument('--image_loader', default='default_loader', type=str)
+parser.add_argument('--struc_label', default='no_change', type=str)
 
 
 best_prec1 = 0
@@ -70,6 +72,7 @@ def main():
     weight_init = args.weight_init
     dist_type = args.dist_type
     image_loader = args.image_loader
+    struc_label = args.struc_label
 
     # create model
     model = API_Net(num_classes=n_classes_total,
@@ -106,18 +109,51 @@ def main():
 
     cudnn.benchmark = True
     # Data loading code
-    train_list = args.train_list
+    # train_list = args.train_list
+    train_list_mid = args.train_list.split(',')
+
+    if len(train_list_mid) > 1:
+        train_list = []
+        for item in train_list_mid:
+            item = Path(item)
+            f = open(item, "r")
+            train_list_midd = f.readlines()
+            train_list.extend(train_list_midd)
+
+    else:
+        train_list_mid = Path(train_list_mid[0])
+        f = open(train_list_mid, "r")
+        train_list = f.readlines()
+
+    transform_3 = transforms.Compose([
+        transforms.Resize([512, 512]),
+        transforms.RandomCrop([448, 448]),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=(0.485, 0.456, 0.406),
+            std=(0.229, 0.224, 0.225)
+        )])
+
+    transform_9 = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Resize([512, 512]),
+        transforms.RandomCrop([448, 448]),
+        transforms.RandomHorizontalFlip(),
+        transforms.Normalize(
+            mean=(0.485, 0.456, 0.406, 0.485, 0.456, 0.406, 0.485, 0.456, 0.406),
+            std=(0.229, 0.224, 0.225, 0.229, 0.224, 0.225, 0.229, 0.224, 0.225)
+        )])
+
+    if image_loader == 'nine_channels':
+        transform_picked = transform_9
+    else:
+        transform_picked = transform_3
+
     train_dataset = BatchDataset(train_list=train_list,
                                  loader=image_loader,
-                                 transform=transforms.Compose([
-                                     transforms.Resize([512,512]),
-                                     transforms.RandomCrop([448,448]),
-                                     transforms.RandomHorizontalFlip(),
-                                     transforms.ToTensor(),
-                                     transforms.Normalize(
-                                         mean=(0.485, 0.456, 0.406),
-                                         std=(0.229, 0.224, 0.225)
-                                     )]),
+                                 struc_label=struc_label,
+                                 transform=transform_picked
                                  )
                                             
     train_sampler = BalancedBatchSampler(train_dataset, args.n_classes, args.n_samples)
@@ -128,19 +164,31 @@ def main():
         pin_memory=True,
     )
     scheduler_conv = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_conv, 100*len(train_loader))
-    scheduler_fc = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_fc, 100*len(train_loader))
+    scheduler_fc = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer_fc, 100 * len(train_loader))
+    # scheduler_conv = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_conv, mode='min', factor=0.1, patience=10,
+    #                                                             cooldown=0, min_lr=1e-8, verbose=True)
+    # scheduler_fc = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_fc, mode='min', factor=0.1, patience=10,
+    #                                                             cooldown=0, min_lr=1e-8, verbose=True)
 
-    val_list = args.val_list
+    # val_list_mid = args.val_list
+    val_list_mid = args.val_list.split(',')
+    if len(val_list_mid) > 1:
+        val_list = []
+        for item in val_list_mid:
+            item = Path(item)
+            f = open(item, "r")
+            val_list_midd = f.readlines()
+            val_list.extend(val_list_midd)
+
+    else:
+        val_list_mid = Path(val_list_mid[0])
+        f = open(val_list_mid, "r")
+        val_list = f.readlines()
+
     val_dataset = RandomDataset(val_list=val_list,
                                 loader=image_loader,
-                                transform=transforms.Compose([
-                                    transforms.Resize([512, 512]),
-                                    transforms.CenterCrop([448, 448]),
-                                    transforms.ToTensor(),
-                                    transforms.Normalize(
-                                        mean=(0.485, 0.456, 0.406),
-                                        std=(0.229, 0.224, 0.225)
-                                    )]),
+                                struc_label=struc_label,
+                                transform=transform_9,
                                 )
     val_loader = torch.utils.data.DataLoader(
         val_dataset,
@@ -160,8 +208,8 @@ def main():
     print('START TIME:', time.asctime(time.localtime(time.time())))
     for epoch in range(args.start_epoch, args.epochs):
         train(train_loader, model, criterion, optimizer_conv, scheduler_conv, optimizer_fc, scheduler_fc, epoch, step,
-              n_classes_total, train_writer, dist_type)
-        prec1_val, loss_val = validate(val_loader, model, criterion, dist_type)
+              n_classes_total, train_writer, dist_type, image_loader)
+        prec1_val, loss_val = validate(val_loader, model, criterion, dist_type, image_loader)
 
         train_writer.add_scalar('val_loss', loss_val, epoch)
         train_writer.add_scalar('val_top1', prec1_val, epoch)
@@ -181,7 +229,7 @@ def main():
 
 
 def train(train_loader, model, criterion, optimizer_conv, scheduler_conv, optimizer_fc, scheduler_fc, epoch, step,
-          n_classes_total, train_writer, dist_type):
+          n_classes_total, train_writer, dist_type, image_loader):
     global best_prec1
 
     batch_time = AverageMeter()
@@ -212,7 +260,7 @@ def train(train_loader, model, criterion, optimizer_conv, scheduler_conv, optimi
 
 
         # compute output
-        logit1_self, logit1_other, logit2_self, logit2_other, labels1, labels2, features = model(input_var, target_var, flag='train', dist_type=dist_type)
+        logit1_self, logit1_other, logit2_self, logit2_other, labels1, labels2, features = model(input_var, target_var, flag='train', dist_type=dist_type, loader=image_loader)
         batch_size = logit1_self.shape[0]
         labels1 = labels1.to(device)
         labels2 = labels2.to(device)
@@ -243,7 +291,7 @@ def train(train_loader, model, criterion, optimizer_conv, scheduler_conv, optimi
         # orthogonal projection loss
         loss_op = op_loss(features, target_var)
 
-        loss = softmax_loss + rank_loss + op_lambda * loss_op
+        loss = softmax_loss + rank_loss #+ op_lambda * loss_op
 
         # measure accuracy and record loss
         prec1 = accuracy(logits, targets, 1)
@@ -264,7 +312,6 @@ def train(train_loader, model, criterion, optimizer_conv, scheduler_conv, optimi
         scheduler_conv.step()
         optimizer_fc.step()
         scheduler_fc.step()
-
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -291,7 +338,7 @@ def train(train_loader, model, criterion, optimizer_conv, scheduler_conv, optimi
     return top1.avg, softmax_losses.avg
 
 
-def validate(val_loader, model, criterion, dist_type):
+def validate(val_loader, model, criterion, dist_type, image_loader):
     batch_time = AverageMeter()
     softmax_losses = AverageMeter()
     top1 = AverageMeter()
@@ -308,7 +355,7 @@ def validate(val_loader, model, criterion, dist_type):
             target_val = target.to(device).squeeze()
 
             # compute output
-            logits_val = model(input_val, targets=None, flag='val', dist_type=dist_type)
+            logits_val = model(input_val, targets=None, flag='val', dist_type=dist_type, loader=image_loader)
             # print(f'train logits, targets_val: {logits_val}, {target_val}')
 
             if target_val.dim() != 0:

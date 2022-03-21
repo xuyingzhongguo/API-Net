@@ -10,7 +10,7 @@ import torchvision.transforms as transforms
 import numpy as np
 from models import API_Net
 from datasets import RandomDataset_test
-from utils import accuracy_test_open_set, AverageMeter
+from utils import accuracy_test, AverageMeter
 
 np.set_printoptions(suppress=True,
                     formatter={'float_kind': '{:0.4f}'.format})
@@ -62,6 +62,7 @@ parser.add_argument('--image_loader', default='default_loader', type=str)
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(device)
 
 def main(args):
     model_path = args.model_load_path
@@ -126,7 +127,6 @@ def main(args):
 
 def test(test_loader, model, bs, dist_type, image_loader, output_file='output-predictions.txt'):
     batch_time = AverageMeter()
-    # softmax_losses = AverageMeter()
     top1 = AverageMeter()
 
     # switch to evaluate mode
@@ -152,7 +152,7 @@ def test(test_loader, model, bs, dist_type, image_loader, output_file='output-pr
             labels_scores_predictions = '{0} {1} {2}'.format(class_label, target[0][0].numpy(), score_value)
             result_file.write(labels_scores_predictions + '\n')
 
-            prec1, tn, tp, fn, fp = accuracy_test_open_set(logits, target_val)
+            prec1, tn, tp, fn, fp = accuracy_test(logits, target_val)
             tns = tns + tn
             tps = tps + tp
             fns = fns + fn
@@ -171,7 +171,6 @@ def test(test_loader, model, bs, dist_type, image_loader, output_file='output-pr
                     i, len(test_loader), batch_time=batch_time,
                     top1=top1, time=time.asctime(time.localtime(time.time()))))
         print(' * Prec@1 {top1.avg:.3f}'.format(top1=top1))
-
 
     # result_file.close()
     return top1.avg, tns, tps, fns, fps

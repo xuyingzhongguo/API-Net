@@ -6,6 +6,7 @@ import numpy as np
 import sys
 import torch.nn.functional as F
 from utils import init_weights_zero, init_weights_xavier_uniform, init_weights_xavier_normal, init_weights_kaiming_uniform, init_weights_kaiming_normal
+from model.vit import vit_b_16
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -30,25 +31,40 @@ class API_Net(nn.Module):
         # ---------Resnet101---------
         if model_name == 'res101':
             model = models.resnet101(pretrained=True)
+            kernel_size = 14
         # layers = list(resnet101.children())[:-2]
 
         # ---------Efficientnet---------
         elif model_name == 'effb0':
             model = models.efficientnet_b0(pretrained=True)
+            kernel_size = 14
         elif model_name == 'effb1':
             model = models.efficientnet_b1(pretrained=True)
+            kernel_size = 14
         elif model_name == 'effb2':
             model = models.efficientnet_b2(pretrained=True)
+            kernel_size = 14
         elif model_name == 'effb3':
             model = models.efficientnet_b3(pretrained=True)
+            kernel_size = 14
         elif model_name == 'effb4':
             model = models.efficientnet_b4(pretrained=True)
+            kernel_size = 14
         elif model_name == 'effb5':
             model = models.efficientnet_b5(pretrained=True)
+            kernel_size = 14
         elif model_name == 'effb6':
             model = models.efficientnet_b6(pretrained=True)
+            kernel_size = 14
         elif model_name == 'effb7':
             model = models.efficientnet_b7(pretrained=True)
+            kernel_size = 14
+
+        # ---------Vision Transformer---------
+        elif model_name == 'vit_b_16':
+            model = vit_b_16(pretrained=True)
+            kernel_size = 28
+
         else:
             sys.exit('wrong model name baby')
 
@@ -77,11 +93,13 @@ class API_Net(nn.Module):
             fc_size = model.fc.in_features
         elif 'eff' in model_name:
             fc_size = model.classifier[1].in_features
+        elif 'vit' in model_name:
+            fc_size = model.hidden_dim
         else:
             sys.exit('wrong network name baby')
 
         self.conv = nn.Sequential(*layers)
-        self.avg = nn.AvgPool2d(kernel_size=14, stride=1)
+        self.avg = nn.AvgPool2d(kernel_size=kernel_size, stride=1)
 
         self.map1 = nn.Linear(fc_size * 2, 512)
         self.map2 = nn.Linear(512, fc_size)
@@ -90,13 +108,17 @@ class API_Net(nn.Module):
         self.drop = nn.Dropout(p=0.5)
         self.sigmoid = nn.Sigmoid()
 
+        # self.conv_reduce = nn.Conv2d(in_channels=9, out_channels=3, kernel_size=1)
 
-    def forward(self, images, targets=None, flag='train', dist_type='euclidean'):
+
+    def forward(self, images, targets=None, flag='train', dist_type='euclidean', loader='three'):
+        # if loader == 'nine_channels':
+        #     images = self.conv_reduce(images)
         # print(f'images {images.shape}')
         conv_out = self.conv(images)
         # print(f'conv_out {conv_out.shape}')
         pool_out_old = self.avg(conv_out)
-        # print(f'pool_out {pool_out.shape}')
+        # print(f'pool_out {pool_out_old.shape}')
         pool_out = pool_out_old.squeeze()
         # print(f'pool_out {pool_out.shape}')
 
@@ -142,6 +164,7 @@ class API_Net(nn.Module):
 
 
     def get_pairs(self, embeddings, labels, dist_type):
+        # print(f'embedding shape {embeddings.shape}')
         if dist_type == 'euclidean':
             distance_matrix = pdist(embeddings).detach().cpu().numpy()
         elif dist_type == 'cosine':
