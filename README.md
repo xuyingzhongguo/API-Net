@@ -8,6 +8,9 @@ We propose a new approach, Multi-Channel Xception Attention Pairwise Interaction
 # How to use:
 If you want to test, please refer to [test.slurm](test.slurm) for examples.
 
+# Download model
+Here is the [link](https://drive.google.com/drive/folders/1jMdXLp3LhG06YQQicRu00aducCa2hcOT?usp=sharing) for MCX-API model for RGB. 
+
 # Citing:
 Please kindly cite the following paper, if you find this code helpful in your work.
 ```
