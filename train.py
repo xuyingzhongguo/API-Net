@@ -135,6 +135,16 @@ def main():
             std=(0.229, 0.224, 0.225)
         )])
 
+    transform_6 = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Resize([512, 512]),
+        transforms.RandomCrop([448, 448]),
+        transforms.RandomHorizontalFlip(),
+        transforms.Normalize(
+            mean=(0.485, 0.456, 0.406, 0.485, 0.456, 0.406),
+            std=(0.229, 0.224, 0.225, 0.229, 0.224, 0.225)
+        )])
+
     transform_9 = transforms.Compose([
         transforms.ToTensor(),
         transforms.Resize([512, 512]),
@@ -145,10 +155,13 @@ def main():
             std=(0.229, 0.224, 0.225, 0.229, 0.224, 0.225, 0.229, 0.224, 0.225)
         )])
 
-    if image_loader == 'nine_channels':
+    if image_loader == 'nine_channels' or image_loader == 'temporal_9':
         transform_picked = transform_9
+    elif image_loader == 'rgb_hsv' or image_loader == 'rgb_lab' or image_loader == 'rgb_ycbcr':
+        transform_picked = transform_6
     else:
         transform_picked = transform_3
+        print('transform3')
 
     train_dataset = BatchDataset(train_list=train_list,
                                  loader=image_loader,
@@ -188,7 +201,7 @@ def main():
     val_dataset = RandomDataset(val_list=val_list,
                                 loader=image_loader,
                                 struc_label=struc_label,
-                                transform=transform_9,
+                                transform=transform_picked,
                                 )
     val_loader = torch.utils.data.DataLoader(
         val_dataset,
@@ -225,7 +238,8 @@ def main():
             'best_prec1': best_prec1,
             'optimizer_conv': optimizer_conv.state_dict(),
             'optimizer_fc': optimizer_fc.state_dict(),
-        }, is_best=is_best, saved_file=os.path.join(model_output_path, str(epoch) + '_' + model_name))
+        }, is_best=is_best, saved_file=os.path.join(model_output_path, 'model_best.pth.tar'))
+        # str(epoch) + '_' + model_name
 
 
 def train(train_loader, model, criterion, optimizer_conv, scheduler_conv, optimizer_fc, scheduler_fc, epoch, step,
@@ -307,8 +321,8 @@ def train(train_loader, model, criterion, optimizer_conv, scheduler_conv, optimi
         optimizer_fc.zero_grad()
         loss.backward()
 
-        if epoch >= 8:
-            optimizer_conv.step()
+        # if epoch >= 8:
+        optimizer_conv.step()
         scheduler_conv.step()
         optimizer_fc.step()
         scheduler_fc.step()

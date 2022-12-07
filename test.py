@@ -11,6 +11,7 @@ import numpy as np
 from models import API_Net
 from datasets import RandomDataset_test
 from utils import accuracy_test, AverageMeter
+from pathlib import Path
 
 np.set_printoptions(suppress=True,
                     formatter={'float_kind': '{:0.4f}'.format})
@@ -67,6 +68,10 @@ print(device)
 def main(args):
     model_path = args.model_load_path
     result_write_path = args.output_path
+    if os.path.exists(result_write_path):
+        os.remove(result_write_path)
+    if not os.path.exists(Path(result_write_path).parent):
+        os.makedirs(Path(result_write_path).parent)
     test_list = args.test_list
     batch_size = args.batch_size
     n_classes_total = args.n_classes_total
@@ -97,6 +102,16 @@ def main(args):
             std=(0.229, 0.224, 0.225)
         )])
 
+    transform_6 = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Resize([512, 512]),
+        transforms.RandomCrop([448, 448]),
+        transforms.RandomHorizontalFlip(),
+        transforms.Normalize(
+            mean=(0.485, 0.456, 0.406, 0.485, 0.456, 0.406),
+            std=(0.229, 0.224, 0.225, 0.229, 0.224, 0.225)
+        )])
+
     transform_9 = transforms.Compose([
         transforms.ToTensor(),
         transforms.Resize([512, 512]),
@@ -107,8 +122,10 @@ def main(args):
             std=(0.229, 0.224, 0.225, 0.229, 0.224, 0.225, 0.229, 0.224, 0.225)
         )])
 
-    if image_loader == 'nine_channels':
+    if image_loader == 'nine_channels' or image_loader == 'temporal_9':
         transform_picked = transform_9
+    elif image_loader == 'rgb_hsv' or image_loader == 'rgb_lab' or image_loader == 'rgb_ycbcr':
+        transform_picked = transform_6
     else:
         transform_picked = transform_3
 
@@ -141,16 +158,29 @@ def test(test_loader, model, bs, dist_type, image_loader, output_file='output-pr
         for i, (input, target, image_name) in enumerate(test_loader):
             input_val = input.to(device)
             target_val = target.to(device)
-            result_file.write(image_name[0] + '\n')
+            result_file.write(image_name[0] + '\t')
 
             # compute output
             logits = model(input_val, targets=None, flag='test', dist_type=dist_type, loader=image_loader)
-            logits_str = str(logits.view(-1).cpu())
-            result_file.write(logits_str + '\n')
+            # logits_str = str(logits.view(-1).cpu())
+            # result_file.write(logits_str + '\n')
+            #
+            # class_label, score_value = logits.max(0)
+            # labels_scores_predictions = '{0} {1} {2}'.format(class_label, target[0][0].numpy(), score_value)
+            # result_file.write(labels_scores_predictions + '\n')
 
-            class_label, score_value = logits.max(0)
-            labels_scores_predictions = '{0} {1} {2}'.format(class_label, target[0][0].numpy(), score_value)
+            # modified output
+            output0 = str(logits[0].item())
+            output1 = str(logits[1].item())
+            output2 = str(logits[2].item())
+            output3 = str(logits[3].item())
+            result_file.write(output0 + '\t' + output1 + '\t' + output2 + '\t' + output3 + '\t')
+
+            _, score_value = logits.max(0)
+            labels_scores_predictions = '{0}\t{1}'.format(target[0][0].numpy(), score_value)
+            # label output_value
             result_file.write(labels_scores_predictions + '\n')
+
 
             prec1, tn, tp, fn, fp = accuracy_test(logits, target_val)
             tns = tns + tn

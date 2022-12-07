@@ -66,11 +66,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def main(args):
     model_path = args.model_load_path
-    result_write_path = args.output_path
+    features_output_file = args.output_path
     # if os.path.exists(result_write_path):
     #     os.remove(result_write_path)
-    if not os.path.exists(Path(result_write_path).parent):
-        os.makedirs(Path(result_write_path).parent)
     test_list = args.test_list
     batch_size = args.batch_size
     n_classes_total = args.n_classes_total
@@ -126,6 +124,7 @@ def main(args):
     else:
         transform_picked = transform_3
 
+
     test_dataset = RandomDataset_test(val_list=test_list,
                                       loader=image_loader,
                                       transform=transform_picked
@@ -134,75 +133,53 @@ def main(args):
         test_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
-    _, tns, tps, fns, fps = test(test_loader, model, batch_size, dist_type, image_loader, result_write_path)
-    print(f'true negative: {tns}, true positive: {tps}, false negative: {fns}, false positive: {fps}')
-    print('-----------------------------------------------------------------------------------------')
+    features(test_loader, model, dist_type, image_loader, model_name, features_output_file)
 
 
-def test(test_loader, model, bs, dist_type, image_loader, output_file='output-predictions.txt'):
-    batch_time = AverageMeter()
-    # softmax_losses = AverageMeter()
-    top1 = AverageMeter()
+def features(test_loader, model, dist_type, image_loader, model_name, features_output_file):
+    # features1_self = []
+    # features1_other = []
+    # features2_self = []
+    # features2_other = []
+    # labels1 = []
+    # labels2 = []
+
+    features = []
+    labels = []
+    paths = []
 
     # switch to evaluate mode
     model.eval()
-    end = time.time()
-    # print(model)
 
-    result_file = open(output_file, 'a')
-    tns = tps = fns = fps = 0
+    test_output_file = os.path.join('features_output', model_name, features_output_file)
+    test_output_folder = Path(test_output_file).parent
+    if not os.path.exists(test_output_folder):
+        os.makedirs(test_output_folder)
 
     with torch.no_grad():
         for i, (input, target, image_name) in enumerate(test_loader):
             input_val = input.to(device)
-            target_val = target.to(device)
-            result_file.write(image_name[0] + '\t')
 
             # compute output
-            logits = model(input_val, targets=None, flag='test', dist_type=dist_type, loader=image_loader)
-            # logits_str = str(logits.view(-1).cpu())
-            # result_file.write(logits_str + '\n')
-            #
-            # class_label, score_value = logits.max(0)
-            # labels_scores_predictions = '{0} {1} {2}'.format(class_label, target[0][0].numpy(), score_value)
-            # result_file.write(labels_scores_predictions + '\n')
+            # feature1_self, feature1_other, feature2_self, feature2_other, label1, label2 = model(input_val, targets=None, flag='features', dist_type=dist_type, loader=image_loader)
+            # features1_self.append(feature1_self)
+            # features1_other.append(feature1_other)
+            # features2_self.append(feature2_self)
+            # features2_other.append(feature2_other)
+            # labels1.append(label1)
+            # labels2.append(label2)
 
-            # modified output
-            output0 = str(logits[0].item())
-            output1 = str(logits[1].item())
-            output2 = str(logits[2].item())
-            output3 = str(logits[3].item())
-            output4 = str(logits[4].item())
-            result_file.write(output0 + '\t' + output1 + '\t' + output2 + '\t' + output3 + '\t' + output4 + '\t')
+            feature = model(input_val, targets=None, flag='tsne', dist_type=dist_type, loader=image_loader)
 
-            _, score_value = logits.max(0)
-            labels_scores_predictions = '{0}\t{1}'.format(target[0][0].numpy(), score_value)
-            # label output_value
-            result_file.write(labels_scores_predictions + '\n')
+            feature = feature.cpu().detach().numpy().flatten()
 
-            prec1, tn, tp, fn, fp = accuracy_test_open_set(logits, target_val)
-            tns = tns + tn
-            tps = tps + tp
-            fns = fns + fn
-            fps = fps + fp
+            features.append(feature)
+            target = target.numpy().astype(int)
+            target[target > 1] = 1
+            labels.append(target)
+            paths.append(image_name)
 
-            top1.update(prec1, logits.size(0))
-
-            # measure elapsed time
-            batch_time.update(time.time() - end)
-            end = time.time()
-
-            if i % args.print_freq == 0:
-                print('Validation results: \t Time: {time}\nTest: [{0}/{1}]\t'
-                      'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                      'Prec@1 {top1.val:.3f} ({top1.avg:.3f})'.format(
-                    i, len(test_loader), batch_time=batch_time,
-                    top1=top1, time=time.asctime(time.localtime(time.time()))))
-        print(' * Prec@1 {top1.avg:.3f}'.format(top1=top1))
-
-
-    # result_file.close()
-    return top1.avg, tns, tps, fns, fps
+    np.savez(test_output_file, features=features, labels=labels, paths=paths)
 
 
 if __name__ == '__main__':

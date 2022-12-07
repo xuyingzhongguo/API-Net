@@ -5,6 +5,8 @@ from PIL import Image
 import numpy as np
 import cv2
 import sys
+import os
+from glob import glob
 
 
 def default_loader(path):
@@ -38,6 +40,73 @@ def bvcb_loader(path):
     return img
 
 
+def hsv_loader(path):
+    try:
+        img = cv2.imread(path, cv2.COLOR_BGR2RGB)
+        hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        img = Image.fromarray(hsv_img)
+    except:
+        with open('read_error.txt', 'a') as fid:
+            fid.write(path+'\n')
+        return Image.new('RGB', (224, 224), 'white')
+    return img
+
+
+def lab_loader(path):
+    try:
+        img = cv2.imread(path, cv2.COLOR_BGR2RGB)
+        lab_img = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
+        img = Image.fromarray(lab_img)
+    except:
+        with open('read_error.txt', 'a') as fid:
+            fid.write(path+'\n')
+        return Image.new('RGB', (224, 224), 'white')
+    return img
+
+
+def ycbcr_loader(path):
+    try:
+        img = cv2.imread(path, cv2.COLOR_BGR2RGB)
+        ycrcb_img = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+        img = Image.fromarray(ycrcb_img)
+    except:
+        with open('read_error.txt', 'a') as fid:
+            fid.write(path+'\n')
+        return Image.new('RGB', (224, 224), 'white')
+    return img
+
+
+def single_channels_loader(path):
+    try:
+        img = cv2.imread(path, cv2.COLOR_BGR2RGB)
+        lab_img = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
+        hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        h, w = img[:, :, 0].shape
+        new_arr = np.zeros((h, w, 3))
+
+        # new_arr[:, :, 0] = lab_img[:, :, 0]
+        # new_arr[:, :, 1] = lab_img[:, :, 0]
+        # new_arr[:, :, 2] = lab_img[:, :, 0]
+
+        new_arr[:, :, 0] = hsv_img[:, :, 2]
+        new_arr[:, :, 1] = hsv_img[:, :, 2]
+        new_arr[:, :, 2] = hsv_img[:, :, 2]
+
+        new_arr = new_arr.astype('uint8')
+        img = Image.fromarray(new_arr)
+
+    except:
+        with open('read_error.txt', 'a') as fid:
+            fid.write(path+'\n')
+        new_arr = np.zeros((224, 224, 9))
+        new_arr = new_arr.astype('uint8')
+        img = Image.fromarray(new_arr)
+        print('error')
+        print(img.size)
+        return img
+    return img
+
+
 def nine_channels_loader(path):
     try:
         img = cv2.imread(path, cv2.COLOR_BGR2RGB)
@@ -46,15 +115,179 @@ def nine_channels_loader(path):
         ycrcb_img = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
         h, w = img[:, :, 0].shape
         new_arr = np.zeros((h, w, 9))
-        new_arr[:, :, 0] = lab_img[:, :, 0]
-        new_arr[:, :, 1] = lab_img[:, :, 1]
-        new_arr[:, :, 2] = lab_img[:, :, 2]
-        new_arr[:, :, 3] = hsv_img[:, :, 0]
-        new_arr[:, :, 4] = hsv_img[:, :, 1]
-        new_arr[:, :, 5] = hsv_img[:, :, 2]
+        # new_arr[:, :, 0] = lab_img[:, :, 0]
+        # new_arr[:, :, 1] = lab_img[:, :, 1]
+        # new_arr[:, :, 2] = lab_img[:, :, 2]
+        # new_arr[:, :, 3] = hsv_img[:, :, 0]
+        # new_arr[:, :, 4] = hsv_img[:, :, 1]
+        # new_arr[:, :, 5] = hsv_img[:, :, 2]
+        # new_arr[:, :, 6] = ycrcb_img[:, :, 0]
+        # new_arr[:, :, 7] = ycrcb_img[:, :, 1]
+        # new_arr[:, :, 8] = ycrcb_img[:, :, 2]
+
+        # rgb+lab+hsv
+        # new_arr[:, :, 0] = img[:, :, 0]
+        # new_arr[:, :, 1] = img[:, :, 1]
+        # new_arr[:, :, 2] = img[:, :, 2]
+        # new_arr[:, :, 3] = lab_img[:, :, 0]
+        # new_arr[:, :, 4] = lab_img[:, :, 1]
+        # new_arr[:, :, 5] = lab_img[:, :, 2]
+        # new_arr[:, :, 6] = hsv_img[:, :, 0]
+        # new_arr[:, :, 7] = hsv_img[:, :, 1]
+        # new_arr[:, :, 8] = hsv_img[:, :, 2]
+
+        # rgb+lab+ycbcr
+        new_arr[:, :, 0] = img[:, :, 0]
+        new_arr[:, :, 1] = img[:, :, 1]
+        new_arr[:, :, 2] = img[:, :, 2]
+        new_arr[:, :, 3] = lab_img[:, :, 0]
+        new_arr[:, :, 4] = lab_img[:, :, 1]
+        new_arr[:, :, 5] = lab_img[:, :, 2]
         new_arr[:, :, 6] = ycrcb_img[:, :, 0]
         new_arr[:, :, 7] = ycrcb_img[:, :, 1]
         new_arr[:, :, 8] = ycrcb_img[:, :, 2]
+
+        new_arr = new_arr.astype('uint8')
+        img = new_arr
+
+    except:
+        with open('read_error.txt', 'a') as fid:
+            fid.write(path+'\n')
+        new_arr = np.zeros((224, 224, 9))
+        new_arr = new_arr.astype('uint8')
+        img = Image.fromarray(new_arr)
+        print('error')
+        print(img.size)
+        return img
+    return img
+
+
+def rgb_hsv_loader(path):
+    try:
+        img = cv2.imread(path, cv2.COLOR_BGR2RGB)
+        hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        h, w = img[:, :, 0].shape
+        new_arr = np.zeros((h, w, 6))
+
+        # rgb+hsv
+        new_arr[:, :, 0] = img[:, :, 0]
+        new_arr[:, :, 1] = img[:, :, 1]
+        new_arr[:, :, 2] = img[:, :, 2]
+        new_arr[:, :, 3] = hsv_img[:, :, 0]
+        new_arr[:, :, 4] = hsv_img[:, :, 1]
+        new_arr[:, :, 5] = hsv_img[:, :, 2]
+
+        new_arr = new_arr.astype('uint8')
+        img = new_arr
+
+    except:
+        with open('read_error.txt', 'a') as fid:
+            fid.write(path+'\n')
+        new_arr = np.zeros((224, 224, 6))
+        new_arr = new_arr.astype('uint8')
+        img = Image.fromarray(new_arr)
+        print('error')
+        print(img.size)
+        return img
+    return img
+
+
+def rgb_lab_loader(path):
+    try:
+        img = cv2.imread(path, cv2.COLOR_BGR2RGB)
+        lab_img = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
+        h, w = img[:, :, 0].shape
+        new_arr = np.zeros((h, w, 6))
+
+        # rgb+lab
+        new_arr[:, :, 0] = img[:, :, 0]
+        new_arr[:, :, 1] = img[:, :, 1]
+        new_arr[:, :, 2] = img[:, :, 2]
+        new_arr[:, :, 3] = lab_img[:, :, 0]
+        new_arr[:, :, 4] = lab_img[:, :, 1]
+        new_arr[:, :, 5] = lab_img[:, :, 2]
+
+        new_arr = new_arr.astype('uint8')
+        img = new_arr
+
+    except:
+        with open('read_error.txt', 'a') as fid:
+            fid.write(path+'\n')
+        new_arr = np.zeros((224, 224, 6))
+        new_arr = new_arr.astype('uint8')
+        img = Image.fromarray(new_arr)
+        print('error')
+        print(img.size)
+        return img
+    return img
+
+
+def rgb_ycbcr_loader(path):
+    try:
+        img = cv2.imread(path, cv2.COLOR_BGR2RGB)
+        ycrcb_img = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+        h, w = img[:, :, 0].shape
+        new_arr = np.zeros((h, w, 6))
+
+        # lab+ycbcr
+        new_arr[:, :, 0] = img[:, :, 0]
+        new_arr[:, :, 1] = img[:, :, 1]
+        new_arr[:, :, 2] = img[:, :, 2]
+        new_arr[:, :, 3] = ycrcb_img[:, :, 0]
+        new_arr[:, :, 4] = ycrcb_img[:, :, 1]
+        new_arr[:, :, 5] = ycrcb_img[:, :, 2]
+
+        new_arr = new_arr.astype('uint8')
+        img = new_arr
+
+    except:
+        with open('read_error.txt', 'a') as fid:
+            fid.write(path+'\n')
+        new_arr = np.zeros((224, 224, 6))
+        new_arr = new_arr.astype('uint8')
+        img = Image.fromarray(new_arr)
+        print('error')
+        print(img.size)
+        return img
+    return img
+
+
+def temporal_9(path):
+    try:
+        img_0 = cv2.imread(path, cv2.COLOR_BGR2RGB)
+        path_split = path.split('/')
+        frame_num = path_split[-1].split('_')[0][5:8]
+
+        next_frame = int(frame_num) + 10
+        next_frame_path = os.path.join('/', *path_split[:-1], 'frame' + str(next_frame) + '*.png')
+        path_2 = glob(next_frame_path)[0]
+
+        next2_frame = int(frame_num) + 20
+        next2_frame_path = os.path.join('/', *path_split[:-1], 'frame' + str(next2_frame) + '*.png')
+        path_3 = glob(next2_frame_path)[0]
+
+        img_1 = cv2.imread(path_2, cv2.COLOR_BGR2RGB)
+        img_2 = cv2.imread(path_3, cv2.COLOR_BGR2RGB)
+
+        print('-----------------temporal1-----------------')
+        print(path)
+        print(path_2)
+        print(path_3)
+        print('-----------------temporal2-----------------')
+
+        h, w = img_0[:, :, 0].shape
+        new_arr = np.zeros((h, w, 9))
+
+        new_arr[:, :, 0] = img_0[:, :, 0]
+        new_arr[:, :, 1] = img_0[:, :, 1]
+        new_arr[:, :, 2] = img_0[:, :, 2]
+        new_arr[:, :, 3] = img_1[:, :, 0]
+        new_arr[:, :, 4] = img_1[:, :, 1]
+        new_arr[:, :, 5] = img_1[:, :, 2]
+        new_arr[:, :, 6] = img_2[:, :, 0]
+        new_arr[:, :, 7] = img_2[:, :, 1]
+        new_arr[:, :, 8] = img_2[:, :, 2]
+
         new_arr = new_arr.astype('uint8')
         img = new_arr
 
@@ -101,6 +334,32 @@ class RandomDataset(Dataset):
         elif loader == 'nine_channels':
             print('self.dataloader = nine_channels_loader')
             self.dataloader = nine_channels_loader
+        elif loader == 'rgb_lab':
+            print('self.dataloader = rgb_lab_loader')
+            self.dataloader = rgb_lab_loader
+        elif loader == 'rgb_hsv':
+            print('self.dataloader = rgb_hsv_loader')
+            self.dataloader = rgb_hsv_loader
+        elif loader == 'rgb_ycbcr':
+            print('self.dataloader = rgb_ycbcr_loader')
+            self.dataloader = rgb_ycbcr_loader
+        elif loader == 'single_channel':
+            print('self.dataloader = single_channels_loader')
+            self.dataloader = single_channels_loader
+        elif loader == 'hsv_loader':
+            print('self.dataloader = hsv_loader')
+            self.dataloader = hsv_loader
+        elif loader == 'lab_loader':
+            print('self.dataloader = lab_loader')
+            self.dataloader = lab_loader
+        elif loader == 'ycbcr_loader':
+            print('self.dataloader = ycbcr_loader')
+            self.dataloader = ycbcr_loader
+        elif loader == 'temporal_9':
+            print('self.dataloader = temporal_9')
+            self.dataloader = temporal_9
+        else:
+            sys.exit('wrong image loader baby')
 
         # with open(val_list, 'r') as fid:
         #     self.imglist = fid.readlines()
@@ -133,6 +392,27 @@ class BatchDataset(Dataset):
         elif loader == 'nine_channels':
             print('self.dataloader = nine_channels_loader')
             self.dataloader = nine_channels_loader
+        elif loader == 'rgb_lab':
+            print('self.dataloader = six_channels_loader')
+            self.dataloader = rgb_lab_loader
+        elif loader == 'rgb_hsv':
+            print('self.dataloader = six_channels_loader')
+            self.dataloader = rgb_hsv_loader
+        elif loader == 'rgb_ycbcr':
+            print('self.dataloader = six_channels_loader')
+            self.dataloader = rgb_ycbcr_loader
+        elif loader == 'single_channel':
+            print('self.dataloader = single_channels_loader')
+            self.dataloader = single_channels_loader
+        elif loader == 'hsv_loader':
+            print('self.dataloader = hsv_loader')
+            self.dataloader = hsv_loader
+        elif loader == 'lab_loader':
+            print('self.dataloader = lab_loader')
+            self.dataloader = lab_loader
+        elif loader == 'ycbcr_loader':
+            print('self.dataloader = ycbcr_loader')
+            self.dataloader = ycbcr_loader
         else:
             sys.exit('wrong image loader baby')
 
@@ -215,6 +495,27 @@ class RandomDataset_test(Dataset):
         elif loader == 'nine_channels':
             print('self.dataloader = nine_channels_loader')
             self.dataloader = nine_channels_loader
+        elif loader == 'rgb_lab':
+            print('self.dataloader = six_channels_loader')
+            self.dataloader = rgb_lab_loader
+        elif loader == 'rgb_hsv':
+            print('self.dataloader = six_channels_loader')
+            self.dataloader = rgb_hsv_loader
+        elif loader == 'rgb_ycbcr':
+            print('self.dataloader = six_channels_loader')
+            self.dataloader = rgb_ycbcr_loader
+        elif loader == 'single_channel':
+            print('self.dataloader = single_channels_loader')
+            self.dataloader = single_channels_loader
+        elif loader == 'hsv_loader':
+            print('self.dataloader = hsv_loader')
+            self.dataloader = hsv_loader
+        elif loader == 'lab_loader':
+            print('self.dataloader = lab_loader')
+            self.dataloader = lab_loader
+        elif loader == 'ycbcr_loader':
+            print('self.dataloader = ycbcr_loader')
+            self.dataloader = ycbcr_loader
         else:
             sys.exit('wrong image loader baby')
 
@@ -222,7 +523,12 @@ class RandomDataset_test(Dataset):
             self.imglist = fid.readlines()
 
     def __getitem__(self, index):
-        image_name, label = self.imglist[index].strip().split()
+        split = self.imglist[index].strip().split()
+        if len(split) == 3:
+            split[0] = split[0] + ' ' + split[1]
+            split[1] = split[2]
+            split.pop(2)
+        image_name, label = split
         image_path = image_name
         img = self.dataloader(image_path)
         img = self.transform(img)

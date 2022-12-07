@@ -8,11 +8,21 @@ import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
 import numpy as np
-from model import API_Net
+from models import API_Net
 from datasets import RandomDataset_test
 from utils import accuracy_test_open_set, AverageMeter
 import sys
+import pandas as pd
+from sklearn.manifold import TSNE
+import seaborn as sns
+import matplotlib.pyplot as plt
+import matplotlib
+import tikzplotlib
+from matplotlib.pyplot import figure
+from tqdm import tqdm
 
+
+# python -u t-sne_2d.py -b 1 --n_classes_total 4 --resume saved_models/res101/2568987/model_best.pth.tar
 np.set_printoptions(suppress=True,
                     formatter={'float_kind': '{:0.4f}'.format})
 
@@ -55,7 +65,7 @@ parser.add_argument('--n_classes_total', default=5, type=int,
                     help='the overall number of classes')
 parser.add_argument('--n_samples', default=8, type=int,
                     help='the number of samples per class')
-parser.add_argument('--test_list', default='data_list/trycode.txt', type=str,
+parser.add_argument('--test_list', default='data_list/tsne_list_ff_test.txt', type=str,
                     help='test list')
 parser.add_argument('--model_name', default='res101', type=str)
 parser.add_argument('--dist_type', default='euclidean', type=str)
@@ -63,12 +73,10 @@ parser.add_argument('--image_loader', default='default_loader', type=str)
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(device)
 
 def main(args):
-    model_path = args.model_load_path
-    result_write_path = args.output_path
     test_list = args.test_list
-    batch_size = args.batch_size
     n_classes_total = args.n_classes_total
     model_name = args.model_name
     dist_type = args.dist_type
@@ -101,25 +109,60 @@ def main(args):
         test_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
-    test(test_loader, model, batch_size, dist_type, result_write_path)
+    features, labels = test(test_loader, model, dist_type)  # shape: [449,1048]
+
+    print(features.shape)
+    print(labels.shape)
+
+    tsne = TSNE(n_components=2, random_state=0, init='pca')
+    projections = tsne.fit_transform(features)
+
+    sne_plot = pd.DataFrame()
+    sne_plot["comp-1"] = projections[:, 0]
+    sne_plot["comp-2"] = projections[:, 1]
+
+    figure(figsize=(10, 10), dpi=100)
+
+    ax = sns.scatterplot(x="comp-1", y="comp-2", hue=labels.tolist(),
+                         data=sne_plot, s=500, legend='full', style=labels.tolist(),
+                         palette=sns.color_palette("husl", 5))
+
+    ax.set_title("T-SNE projection", fontsize=50)
+    plt.setp(ax.get_legend().get_texts(), fontsize='1500')
+    ax.legend(markerscale=3)
+    plt.xticks(fontsize=10)
+    plt.yticks(fontsize=10)
+
+    # plt.legend(labels=['original', 'DF', 'F2F', 'FS', 'NT', 'DFDC_Real', 'DFDC_fake', 'Celeb_real', 'Youtube_real',
+    #                    'Celeb-synthesis', 'Deeper_Fake', 'Deeper_Real', 'Faceshifter', 'DeepFakeDetection'])
+    # tikzplotlib.save('plots/2568987_ff.tex')
+    plt.savefig('plots/3367609.png')
+    # plt.show()
 
 
-def test(test_loader, model, dist_type, output_file='output-predictions.txt'):
+def test(test_loader, model, dist_type):
 
     # switch to evaluate mode
     model.eval()
+    features = pd.DataFrame()
+    labels = pd.Series(dtype=int)
 
     with torch.no_grad():
-        for i, (input, target, image_name) in enumerate(test_loader):
+        for i, (input, target, image_name) in enumerate(tqdm(test_loader)):
             input_val = input.to(device)
-            target_val = target.to(device)
+            # target_val = target.to(device)
 
             # compute output
-            features = model(input_val, targets=None, flag='tsne', dist_type=dist_type)
-            print(features.shape)
-            sys.exit()
+            feature = model(input_val, targets=None, flag='tsne', dist_type=dist_type)
+            feature = feature.cpu()
+            feature = feature.view(1, -1)
+            df_f = pd.DataFrame(feature)
+            features = pd.concat([features, df_f], ignore_index=True)
 
-    return 0
+            df_l = pd.Series(target.view(-1))
+            labels = pd.concat([labels, df_l], ignore_index=True)
+
+    return features, labels
 
 
 if __name__ == '__main__':

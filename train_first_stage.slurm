@@ -5,7 +5,7 @@
 #SBATCH -c 8                 # Number of cores (can vary)
 #SBATCH --time=99-00:00:00    # Upper time limit for the job (DD-HH:MM:SS)
 #SBATCH --partition=GPUQ
-#SBATCH --gres=gpu:V10032:2
+#SBATCH --gres=gpu:A100m40
 #SBATCH --mail-user=ying.xu@ntnu.no
 #SBATCH --ntasks-per-node=1     # 1 task per node
 #SBATCH --nice=2147483645
@@ -18,7 +18,7 @@ cd ${WORKDIR}
 
 #module load intel/2020b
 module load Python/3.8.6-GCCcore-10.2.0
-source venv/bin/activate
+source A100-venv/bin/activate
 
 #echo "test 3-2-10 check resnet101 pool_out and distancematrix size"
 #python -u train.py --epochs 100 --n_classes 3 -b 2 --n_samples 10 --n_classes_total 5 --train_list data_list/4+0_train.txt --val_list data_list/4+0_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --model_name ${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
@@ -96,6 +96,9 @@ source venv/bin/activate
 #echo "Resnet101 3+1 DF+F2F+NT, bvcb_loader"
 #python -u train.py --image_loader bvcb_loader --epochs 100 --n_classes 3 -b 3 --n_samples 9 --n_classes_total 4 --model_name res101 --train_list data_list/DF_F2F_NT_train_000599_frame30.txt --val_list data_list/DF_F2F_NT_val_600799_frame30.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
 
+#echo "Resnet101 3+1 DF+F2F+NT, bvcb_loader, add augmentation (ColorJitter & RandomGrayscale)"
+#python -u train.py --image_loader bvcb_loader --epochs 100 --n_classes 3 -b 3 --n_samples 9 --n_classes_total 4 --model_name res101 --train_list data_list/DF_F2F_NT_train_000599_frame30.txt --val_list data_list/DF_F2F_NT_val_600799_frame30.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
 #echo "Resnet101 3+1 DF+F2F+NT, xavier_uniform, bvcb_loader"
 #python -u train.py --weight_init xavier_uniform --image_loader bvcb_loader --epochs 100 --n_classes 3 -b 3 --n_samples 9 --n_classes_total 4 --model_name res101 --train_list data_list/DF_F2F_NT_train_000599_frame30.txt --val_list data_list/DF_F2F_NT_val_600799_frame30.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
 
@@ -111,6 +114,173 @@ source venv/bin/activate
 #echo "Resnet101 3+1 DF+F2F+NT, bvcb_loader, reserve from 2592784 epoch 78"
 #python -u train.py --resume model_save/res101/2592784/model_best.pth.tar --lr 0.001 --image_loader bvcb_loader --epochs 10000 --n_classes 3 -b 3 --n_samples 9 --n_classes_total 4 --model_name res101 --train_list data_list/DF_F2F_NT_train_000599_frame30.txt --val_list data_list/DF_F2F_NT_val_600799_frame30.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
 
-echo "Resnet101 3+1 DF+F2F+NT train fc first, orthogonal loss + marginrank loss"
-python -u train.py --epochs 100 --n_classes 3 -b 3 --n_samples 9 --n_classes_total 4 --model_name res101 --train_list data_list/DF_F2F_NT_train_000599_frame30.txt --val_list data_list/DF_F2F_NT_val_600799_frame30.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101 3+1 DF+F2F+NT train fc first, orthogonal loss + marginrank loss"
+#python -u train.py --epochs 100 --n_classes 3 -b 3 --n_samples 9 --n_classes_total 4 --model_name res101 --train_list data_list/DF_F2F_NT_train_000599_frame30.txt --val_list data_list/DF_F2F_NT_val_600799_frame30.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+
+#echo "vit test"
+#python -u train.py --epochs 1 --n_classes 3 -b 3 --n_samples 3 --n_classes_total 4 --model_name vit_b_16 --train_list data_list/test_ff++.txt --val_list data_list/test_ff++.txt --model_output_path model_save/test/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "vit DF+F2F+NT lr 0.01"
+#python -u train.py --epochs 10000 --n_classes 3 -b 3 --n_samples 9 --n_classes_total 4 --model_name vit_b_16 --train_list data_list/DF_F2F_NT_train_000599_frame30.txt --val_list data_list/DF_F2F_NT_val_600799_frame30.txt --model_output_path model_save/vit_b_16/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "vit DF+F2F+NT pretrained"
+#python -u train.py --epochs 1000 --n_classes 3 --n_samples 100 --n_classes_total 4 --model_name vit_b_16 --train_list data_list/DF_F2F_NT_train_000599_frame30.txt --val_list data_list/DF_F2F_NT_val_600799_frame30.txt --model_output_path model_save/vit_b_16/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+
+
+#echo "Resnet101 all, 9 channels"
+#python -u train.py --model_name res101_9ch --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/4+0_train.txt --val_list data_list/4+0_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "Resnet101 all, 9 channels, 3+1 DF+F2F+FS"
+#python -u train.py --model_name res101_9ch --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/DF_F2F_FS_train_000599_frame30.txt --val_list data_list/DF_F2F_FS_val_600799_frame30.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101, 9 channels, 3+1 DF+F2F+NT"
+#python -u train.py --model_name res101_9ch --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/DF_F2F_NT_train_000599_frame30.txt --val_list data_list/DF_F2F_NT_val_600799_frame30.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101, 9 channels, 3+1 DF+FS+NT"
+#python -u train.py --model_name res101_9ch --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/DF_FS_NT_train_000599_frame30.txt --val_list data_list/DF_FS_NT_val_600799_frame30.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101, 9 channels, 3+1 F2F+FS+NT"
+#python -u train.py --model_name res101_9ch --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/F2F_FS_NT_train_000599_frame30.txt --val_list data_list/F2F_FS_NT_val_600799_frame30.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "Resnet101 all, 9 channels, all, c40"
+#python -u train.py --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c40_all01234_train.txt --val_list data_list/FF++_c40_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "Resnet101 all, 9 channels, 3+1 DF+F2F+FS, c40"
+#python -u train.py --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c40_DF_F2F_FS_train.txt --val_list data_list/FF++_c40_DF_F2F_FS_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101 all, 9 channels, 3+1 DF+F2F+NT, c40"
+#python -u train.py --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c40_DF_F2F_NT_train.txt --val_list data_list/FF++_c40_DF_F2F_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101 all, 9 channels, 3+1 DF+FS+NT, c40"
+#python -u train.py --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c40_DF_FS_NT_train.txt --val_list data_list/FF++_c40_DF_FS_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101 all, 9 channels, 3+1 F2F+FS+NT, c40"
+#python -u train.py --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c40_F2F_FS_NT_train.txt --val_list data_list/FF++_c40_F2F_FS_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "Resnet101 all, rgb, all, c40"
+#python -u train.py --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c40_all01234_train.txt --val_list data_list/FF++_c40_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "Resnet101 all, 3+1 DF+F2F+FS, c40"
+#python -u train.py --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c40_DF_F2F_FS_train.txt --val_list data_list/FF++_c40_DF_F2F_FS_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101 all, 3+1 DF+F2F+NT, c40"
+#python -u train.py --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c40_DF_F2F_NT_train.txt --val_list data_list/FF++_c40_DF_F2F_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101 all, 3+1 DF+FS+NT, c40"
+#python -u train.py --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c40_DF_FS_NT_train.txt --val_list data_list/FF++_c40_DF_FS_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101 all, 3+1 F2F+FS+NT, c40"
+#python -u train.py --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c40_F2F_FS_NT_train.txt --val_list data_list/FF++_c40_F2F_FS_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+
+#echo "Resnet101 all, 9 channels, all, c23"
+#python -u train.py --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "Resnet101, 9 channels, 3+1 DF+F2F+FS, c23"
+#python -u train.py ---model_name res101_9ch -image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_DF_F2F_FS_train.txt --val_list data_list/FF++_c23_DF_F2F_FS_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101, 9 channels, 3+1 DF+F2F+NT, c23"
+#python -u train.py --model_name res101_9ch --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_DF_F2F_NT_train.txt --val_list data_list/FF++_c23_DF_F2F_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101, 9 channels, 3+1 DF+FS+NT, c23"
+#python -u train.py --model_name res101_9ch --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_DF_FS_NT_train.txt --val_list data_list/FF++_c23_DF_FS_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101, 9 channels, 3+1 F2F+FS+NT, c23"
+#python -u train.py --model_name res101_9ch --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_F2F_FS_NT_train.txt --val_list data_list/FF++_c23_F2F_FS_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "Resnet101 all, rgb, all, c23"
+#python -u train.py --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101 all, hsv, all, c23"
+#python -u train.py --image_loader hsv_loader --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101 all, lab, all, c23"
+#python -u train.py --image_loader lab_loader --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "Resnet101, 3+1 DF+F2F+FS, c23"
+#python -u train.py --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_DF_F2F_FS_train.txt --val_list data_list/FF++_c23_DF_F2F_FS_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101, 3+1 DF+F2F+NT, c23"
+#python -u train.py --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_DF_F2F_NT_train.txt --val_list data_list/FF++_c23_DF_F2F_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101, 3+1 DF+FS+NT, c23"
+#python -u train.py --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_DF_FS_NT_train.txt --val_list data_list/FF++_c23_DF_FS_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101, 3+1 F2F+FS+NT, c23"
+#python -u train.py --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_F2F_FS_NT_train.txt --val_list data_list/FF++_c23_F2F_FS_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "Resnet101 all, corrected 9 channels, rgb+lab+hsv, shunxu, all, c23"
+#python -u train.py --model_name res101_9ch --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101 all, 9 channels, rgb+lab+hsv, shunxu, all, raw"
+#python -u train.py --model_name res101_9ch --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/4+0_train.txt --val_list data_list/4+0_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "Resnet101 all, corrected 9 channels, rgb+lab+hsv, shunxu, kaiming_uniform all, c23"
+#python -u train.py --model_name res101_9ch --image_loader nine_channels --weight_init kaiming_uniform --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "Resnet101 all, hsv, all, raw"
+#python -u train.py --epochs 100 --image_loader hsv_loader --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/4+0_train.txt --val_list data_list/4+0_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101 all, hsv, 3+1 DF+F2F+FS, raw"
+#python -u train.py --epochs 100 --image_loader hsv_loader --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/DF_F2F_NT_train_000599_frame30.txt --val_list data_list/DF_F2F_NT_val_600799_frame30.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "Resnet101 all, lab, all, raw"
+#python -u train.py --epochs 100 --image_loader lab_loader --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/4+0_train.txt --val_list data_list/4+0_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101 all, lab, 3+1 DF+F2F+FS, raw"
+#python -u train.py --epochs 100 --image_loader lab_loader --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/DF_F2F_NT_train_000599_frame30.txt --val_list data_list/DF_F2F_NT_val_600799_frame30.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "Resnet101 all, corrected 6 channels, rgb+hsv, all, c23"
+#python -u train.py --model_name res101_6ch --image_loader six_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Resnet101 all, corrected 6 channels, rgb+lab, all, raw"
+#python -u train.py --model_name res101_6ch --image_loader six_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/4+0_train.txt --val_list data_list/4+0_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+
+#echo "xception, rgb, all, raw"
+#python -u train.py --epochs 100 --model_name xception --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/4+0_train.txt --val_list data_list/4+0_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "xception, rgb, DF+F2F+NT, raw"
+#python -u train.py --epochs 100 --model_name xception --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/DF_F2F_NT_train_000599_frame30.txt --val_list data_list/DF_F2F_NT_val_600799_frame30.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "xception, rgb, all, c23"
+#python -u train.py --epochs 100 --model_name xception --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "xception, rgb, DF+F2F+NT, c23"
+#python -u train.py --epochs 100 --model_name xception --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_DF_F2F_NT_train.txt --val_list data_list/FF++_c23_DF_F2F_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "xception, rgb, DF+FS+NT, c23"
+#python -u train.py --epochs 100 --model_name xception --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_DF_FS_NT_train.txt --val_list data_list/FF++_c23_DF_FS_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "xception, rgb, DF+F2F+FS, c23"
+#python -u train.py --epochs 100 --model_name xception --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_DF_F2F_FS_train.txt --val_list data_list/FF++_c23_DF_F2F_FS_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "xception, rgb, F2F+FS+NT, c23"
+#python -u train.py --epochs 100 --model_name xception --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_F2F_FS_NT_train.txt --val_list data_list/FF++_c23_F2F_FS_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+
+
+#echo "Xception, 9 channels, rgb+lab+hsv, DF+F2F+NT, c23"
+#python -u train.py --model_name xception_9channels --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_DF_F2F_NT_train.txt --val_list data_list/FF++_c23_DF_F2F_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Xception, 9 channels, rgb+lab+hsv, DF+F2F+NT, nocompress"
+#python -u train.py --model_name xception_9channels --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/DF_F2F_NT_train_000599_frame30.txt --val_list data_list/DF_F2F_NT_val_600799_frame30.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Xception, 9 channels, all, raw"
+#python -u train.py --model_name xception_9channels --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/4+0_train.txt --val_list data_list/4+0_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Xception, 9 channels, all, c23"
+#python -u train.py --model_name xception_9channels --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "Xception, 9 channels, rgb+lab+hsv, DF+F2F+FS, c23"
+#python -u train.py --model_name xception_9channels --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_DF_F2F_FS_train.txt --val_list data_list/FF++_c23_DF_F2F_FS_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Xception, 9 channels, rgb+lab+hsv, DF+FS+NT, c23"
+#python -u train.py --model_name xception_9channels --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_DF_FS_NT_train.txt --val_list data_list/FF++_c23_DF_FS_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "Xception, 9 channels, rgb+lab+hsv, F2F+FS+NT, c23"
+#python -u train.py --model_name xception_9channels --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 4 --train_list data_list/FF++_c23_F2F_FS_NT_train.txt --val_list data_list/FF++_c23_F2F_FS_NT_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+
+#echo "Resnet101 all, 1 channels, CIELab->L"
+#python -u train.py --image_loader single_channel --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/4+0_train.txt --val_list data_list/4+0_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "Resnet101 all, 1 channels, HSV->V"
+#python -u train.py --image_loader single_channel --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/4+0_train.txt --val_list data_list/4+0_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "temporal 9, test"
+#python -u train.py --model_name res101_9ch --image_loader temporal_9 --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_val.txt --val_list data_list/FF++_c23_all01234_test.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+
+#echo "xception 6-channels, rgb+hsv"
+#python -u train.py --model_name xception_6channels --image_loader rgb_hsv --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "xception 6-channels, rgb+lab"
+#python -u train.py --model_name xception_6channels --image_loader rgb_lab --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+#echo "xception 6-channels, rgb+ycbcr"
+#python -u train.py --model_name xception_6channels --image_loader rgb_ycbcr --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+
+#echo "xception, lab, all, c23"
+#python -u train.py  --model_name xception --epochs 100 --image_loader lab_loader --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "xception, hsv, all, c23"
+#python -u train.py  --model_name xception --epochs 100 --image_loader hsv_loader --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+#echo "xception, ycbcr, all, c23"
+#python -u train.py  --model_name xception --epochs 100 --image_loader ycbcr_loader --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
+
+
+#echo "Xception, 9 channels, rgb+lab+ycbcr, all, c23"
+#python -u train.py --model_name xception_9channels --image_loader nine_channels --epochs 100 --n_classes 3 --n_samples 9 --n_classes_total 5 --train_list data_list/FF++_c23_all01234_train.txt --val_list data_list/FF++_c23_all01234_val.txt --model_output_path model_save/res101/${SLURM_JOB_ID} --tensorboard_path tensorboard/${SLURM_JOB_ID} | tee output/${SLURM_JOB_ID}.txt
 

@@ -10,8 +10,16 @@ import torchvision.transforms as transforms
 import numpy as np
 from models import API_Net
 from datasets import RandomDataset_test
-from utils import accuracy_test_open_set, AverageMeter
+from utils import accuracy_test, AverageMeter
 from pathlib import Path
+import pandas as pd
+from sklearn.manifold import TSNE
+import seaborn as sns
+import matplotlib.pyplot as plt
+import matplotlib
+import tikzplotlib
+from matplotlib.pyplot import figure
+from tqdm import tqdm
 
 np.set_printoptions(suppress=True,
                     formatter={'float_kind': '{:0.4f}'.format})
@@ -63,12 +71,13 @@ parser.add_argument('--image_loader', default='default_loader', type=str)
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(device)
 
 def main(args):
     model_path = args.model_load_path
     result_write_path = args.output_path
-    # if os.path.exists(result_write_path):
-    #     os.remove(result_write_path)
+    if os.path.exists(result_write_path):
+        os.remove(result_write_path)
     if not os.path.exists(Path(result_write_path).parent):
         os.makedirs(Path(result_write_path).parent)
     test_list = args.test_list
@@ -100,6 +109,7 @@ def main(args):
             mean=(0.485, 0.456, 0.406),
             std=(0.229, 0.224, 0.225)
         )])
+
     transform_6 = transforms.Compose([
         transforms.ToTensor(),
         transforms.Resize([512, 512]),
@@ -109,6 +119,7 @@ def main(args):
             mean=(0.485, 0.456, 0.406, 0.485, 0.456, 0.406),
             std=(0.229, 0.224, 0.225, 0.229, 0.224, 0.225)
         )])
+
     transform_9 = transforms.Compose([
         transforms.ToTensor(),
         transforms.Resize([512, 512]),
@@ -126,6 +137,7 @@ def main(args):
     else:
         transform_picked = transform_3
 
+
     test_dataset = RandomDataset_test(val_list=test_list,
                                       loader=image_loader,
                                       transform=transform_picked
@@ -134,75 +146,67 @@ def main(args):
         test_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
-    _, tns, tps, fns, fps = test(test_loader, model, batch_size, dist_type, image_loader, result_write_path)
-    print(f'true negative: {tns}, true positive: {tps}, false negative: {fns}, false positive: {fps}')
-    print('-----------------------------------------------------------------------------------------')
+
+    features, labels = test(test_loader, model, batch_size, dist_type, image_loader, result_write_path)  # shape: [449,1048]
+
+    print(features.shape)
+    print(labels.shape)
+    np.save(f'plots/features_3209785_1.npy', features)
+    np.save(f'plots/labels_3209785_1.npy', labels)
+
+    # tsne = TSNE(n_components=2, random_state=0)
+    # projections = tsne.fit_transform(features)
+    #
+    # sne_plot = pd.DataFrame()
+    # sne_plot["comp-1"] = projections[:, 0]
+    # sne_plot["comp-2"] = projections[:, 1]
+    #
+    # figure(figsize=(10, 10), dpi=100)
+    #
+    # ax = sns.scatterplot(x="comp-1", y="comp-2", hue=labels.tolist(),
+    #                      data=sne_plot, s=30, legend='full', style=labels.tolist(),
+    #                      palette=sns.color_palette("husl", 5))
+    #
+    # ax.set_title("T-SNE projection", fontsize=10)
+    # # plt.setp(ax.get_legend().get_texts(), fontsize='1500')
+    # ax.legend(markerscale=1)
+    # plt.xticks(fontsize=10)
+    # plt.yticks(fontsize=10)
+
+    # plt.legend(labels=['original', 'DF', 'F2F', 'FS', 'NT', 'DFDC_Real', 'DFDC_fake', 'Celeb_real', 'Youtube_real',
+    #                    'Celeb-synthesis', 'Deeper_Fake', 'Deeper_Real', 'Faceshifter', 'DeepFakeDetection'])
+    # plt.tight_layout()
+    # plt.show()
+
+    # plt.savefig('plots/test.png')
+    # tikzplotlib.save('plots/test.tex')
 
 
 def test(test_loader, model, bs, dist_type, image_loader, output_file='output-predictions.txt'):
     batch_time = AverageMeter()
-    # softmax_losses = AverageMeter()
     top1 = AverageMeter()
 
     # switch to evaluate mode
     model.eval()
-    end = time.time()
-    # print(model)
-
-    result_file = open(output_file, 'a')
-    tns = tps = fns = fps = 0
+    features = pd.DataFrame()
+    labels = pd.Series(dtype=int)
 
     with torch.no_grad():
-        for i, (input, target, image_name) in enumerate(test_loader):
+        for i, (input, target, image_name) in tqdm(enumerate(test_loader), total=len(test_loader)):
             input_val = input.to(device)
-            target_val = target.to(device)
-            result_file.write(image_name[0] + '\t')
+            # target_val = target.to(device)
 
             # compute output
-            logits = model(input_val, targets=None, flag='test', dist_type=dist_type, loader=image_loader)
-            # logits_str = str(logits.view(-1).cpu())
-            # result_file.write(logits_str + '\n')
-            #
-            # class_label, score_value = logits.max(0)
-            # labels_scores_predictions = '{0} {1} {2}'.format(class_label, target[0][0].numpy(), score_value)
-            # result_file.write(labels_scores_predictions + '\n')
+            feature = model(input_val, targets=None, flag='tsne', dist_type=dist_type, loader=image_loader)
+            feature = feature.cpu()
+            feature = feature.view(1, -1)
+            df_f = pd.DataFrame(feature)
+            features = pd.concat([features, df_f], ignore_index=True)
 
-            # modified output
-            output0 = str(logits[0].item())
-            output1 = str(logits[1].item())
-            output2 = str(logits[2].item())
-            output3 = str(logits[3].item())
-            output4 = str(logits[4].item())
-            result_file.write(output0 + '\t' + output1 + '\t' + output2 + '\t' + output3 + '\t' + output4 + '\t')
+            df_l = pd.Series(target.view(-1))
+            labels = pd.concat([labels, df_l], ignore_index=True)
 
-            _, score_value = logits.max(0)
-            labels_scores_predictions = '{0}\t{1}'.format(target[0][0].numpy(), score_value)
-            # label output_value
-            result_file.write(labels_scores_predictions + '\n')
-
-            prec1, tn, tp, fn, fp = accuracy_test_open_set(logits, target_val)
-            tns = tns + tn
-            tps = tps + tp
-            fns = fns + fn
-            fps = fps + fp
-
-            top1.update(prec1, logits.size(0))
-
-            # measure elapsed time
-            batch_time.update(time.time() - end)
-            end = time.time()
-
-            if i % args.print_freq == 0:
-                print('Validation results: \t Time: {time}\nTest: [{0}/{1}]\t'
-                      'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                      'Prec@1 {top1.val:.3f} ({top1.avg:.3f})'.format(
-                    i, len(test_loader), batch_time=batch_time,
-                    top1=top1, time=time.asctime(time.localtime(time.time()))))
-        print(' * Prec@1 {top1.avg:.3f}'.format(top1=top1))
-
-
-    # result_file.close()
-    return top1.avg, tns, tps, fns, fps
+    return features, labels
 
 
 if __name__ == '__main__':
