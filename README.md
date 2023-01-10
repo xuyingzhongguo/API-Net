@@ -15,6 +15,15 @@ Here is the [link](https://drive.google.com/drive/folders/1jMdXLp3LhG06YQQicRu00
 # Citing:
 Please kindly cite the following paper, if you find this code helpful in your work.
 ```
+@inproceedings{xu2023learning,
+  title={Learning Pairwise Interaction for Generalizable DeepFake Detection},
+  author={Xu, Ying and Raja, Kiran and Verdoliva, Luisa and Pedersen, Marius},
+  booktitle={Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision},
+  pages={672--682},
+  year={2023}
+}
+```
+```
 @inproceedings{zhuang2020learning,
   title={Learning Attentive Pairwise Interaction for Fine-Grained Classification.},
   author={Zhuang, Peiqin and Wang, Yali and Qiao, Yu},
