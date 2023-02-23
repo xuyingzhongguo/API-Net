@@ -9,6 +9,15 @@ We propose a new approach, Multi-Channel Xception Attention Pairwise Interaction
 # How to use:
 If you want to test, please refer to [test.slurm](test.slurm) for examples.
 
+# Datalist
+It is a .txt file that includes 'image_path label' every line.
+Here is an example:
+```
+FaceForensics++/original_sequences/youtube/c23/face_images/870/frame121.png 0
+FaceForensics++/manipulated_sequences/Deepfakes/c23/face_images/979_875/frame1.png 1
+...
+```
+
 # Download model
 Here is the [link](https://drive.google.com/drive/folders/1jMdXLp3LhG06YQQicRu00aducCa2hcOT?usp=sharing) for MCX-API model for RGB. 
 
