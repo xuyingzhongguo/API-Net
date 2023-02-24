@@ -9,6 +9,12 @@ We propose a new approach, Multi-Channel Xception Attention Pairwise Interaction
 # How to use:
 If you want to test, please refer to [test.slurm](test.slurm) for examples.
 
+
+# Preprocessing
+For this model, I extracted 1 frame per 10 frames.
+Code could be referred to [this link](https://github.com/xuyingzhongguo/DFDC_face_extract/blob/main/facenet_mtcnn_DFDC.py).
+Then you can use [create_list_FF++.py](https://github.com/xuyingzhongguo/MCX-API/blob/master/create_list_FF%2B%2B.py) to create train.txt or test.txt for training and test.
+
 # Datalist
 It is a .txt file that includes 'image_path label' every line.
 Here is an example:
@@ -17,9 +23,6 @@ FaceForensics++/original_sequences/youtube/c23/face_images/870/frame121.png 0
 FaceForensics++/manipulated_sequences/Deepfakes/c23/face_images/979_875/frame1.png 1
 ...
 ```
-# Preprocessing
-For this model, I extracted 1 frame per 10 frames.
-Code could be referred to [this link](https://github.com/xuyingzhongguo/DFDC_face_extract/blob/main/facenet_mtcnn_DFDC.py).
 
 # Download model
 Here is the [link](https://drive.google.com/drive/folders/1jMdXLp3LhG06YQQicRu00aducCa2hcOT?usp=sharing) for MCX-API model for RGB. 
