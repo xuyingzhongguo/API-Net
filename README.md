@@ -17,6 +17,9 @@ FaceForensics++/original_sequences/youtube/c23/face_images/870/frame121.png 0
 FaceForensics++/manipulated_sequences/Deepfakes/c23/face_images/979_875/frame1.png 1
 ...
 ```
+# Preprocessing
+For this model, I extracted 1 frame per 10 frames.
+Code could be referred to [this link](https://github.com/xuyingzhongguo/DFDC_face_extract/blob/main/facenet_mtcnn_DFDC.py).
 
 # Download model
 Here is the [link](https://drive.google.com/drive/folders/1jMdXLp3LhG06YQQicRu00aducCa2hcOT?usp=sharing) for MCX-API model for RGB. 
