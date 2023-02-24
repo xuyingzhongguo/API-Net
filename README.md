@@ -15,8 +15,7 @@ For this model, I extracted 1 frame per 10 frames.
 Code could be referred to [this link](https://github.com/xuyingzhongguo/DFDC_face_extract/blob/main/facenet_mtcnn_DFDC.py).
 Then you can use [create_list_FF++.py](https://github.com/xuyingzhongguo/MCX-API/blob/master/create_list_FF%2B%2B.py) to create train.txt or test.txt for training and test.
 
-# Datalist
-It is a .txt file that includes 'image_path label' every line.
+The train.txt or test.txt include 'image_path label' every line.
 Here is an example:
 ```
 FaceForensics++/original_sequences/youtube/c23/face_images/870/frame121.png 0
