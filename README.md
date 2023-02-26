@@ -1,16 +1,16 @@
 # Learning Pairwise Interaction for Generalizable DeepFake Detection
 [**[Paper]**](https://openaccess.thecvf.com/content/WACV2023W/XAI4B/html/Xu_Learning_Pairwise_Interaction_for_Generalizable_DeepFake_Detection_WACVW_2023_paper.html)\
 Ying Xu, Kiran Raja, Luisa Verdoliva, Marius Pedersen
-# Introduction:
+## Introduction:
 We propose a new approach, Multi-Channel Xception Attention Pairwise Interaction (MCX-API), that exploits the power of pairwise learning and complementary information from different color space representations in a fine-grained manner. We first validate our idea on a publicly available dataset in a intra-class setting (closed set) with four different Deepfake schemes. Further, we report all the results using balanced-open-set-classification (BOSC) accuracy in an inter-class setting (open-set) using three public datasets. Our experiments indicate that our proposed method can generalize better than the state-of-the-art Deepfakes detectors. We obtain 98.48% BOSC accuracy on the FF++ dataset and 90.87% BOSC accuracy on the CelebDF dataset suggesting a promising direction for generalization of DeepFake detection. We further utilize t-SNE and attention maps to interpret and visualize the decision-making process of our proposed network.
-# Framework:
+## Framework:
 ![Framework](/figures/mcx-api.jpeg)
 
-# How to use:
+## How to use:
 If you want to test, please refer to [test.slurm](test.slurm) for examples.
 
 
-# Preprocessing
+## Preprocessing
 For this model, I extracted 1 frame per 10 frames.
 Code could be referred to [this link](https://github.com/xuyingzhongguo/DFDC_face_extract/blob/main/facenet_mtcnn_DFDC.py).
 Then you can use [create_list_FF++.py](https://github.com/xuyingzhongguo/MCX-API/blob/master/create_list_FF%2B%2B.py) to create train.txt or test.txt for training and test.
@@ -23,10 +23,10 @@ FaceForensics++/manipulated_sequences/Deepfakes/c23/face_images/979_875/frame1.p
 ...
 ```
 
-# Download model
+## Download model
 Here is the [link](https://drive.google.com/drive/folders/1jMdXLp3LhG06YQQicRu00aducCa2hcOT?usp=sharing) for MCX-API model for RGB. 
 
-# Citing:
+## Citing:
 Please kindly cite the following paper, if you find this code helpful in your work.
 ```
 @inproceedings{xu2023learning,
@@ -46,7 +46,7 @@ Please kindly cite the following paper, if you find this code helpful in your wo
   year={2020}
 }
 ```
-# Contact:
+## Contact:
 Please feel free to contact ying.xu@ntnu.no, if you have any questions.
 
 
